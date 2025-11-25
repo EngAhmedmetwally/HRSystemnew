@@ -2,27 +2,28 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Clock, AlertTriangle, UserX, Loader2 } from "lucide-react";
-import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirebase, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query, where, Timestamp } from "firebase/firestore";
 import type { Employee, WorkDay } from "@/lib/types";
 import { useMemo } from "react";
 
 export function StatsCards() {
   const { firestore } = useFirebase();
+  const { user, isUserLoading } = useUser();
 
   const employeesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, 'employees');
-  }, [firestore]);
+  }, [firestore, user]);
   const { data: employees, isLoading: isLoadingEmployees } = useCollection<Employee>(employeesQuery);
 
   const dailyWorkDaysQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const startOfDayTimestamp = Timestamp.fromDate(startOfDay);
     return query(collection(firestore, 'workDays'), where('checkInTime', '>=', startOfDayTimestamp));
-  }, [firestore]);
+  }, [firestore, user]);
   const { data: workDays, isLoading: isLoadingWorkDays } = useCollection<WorkDay>(dailyWorkDaysQuery);
 
   const statsData = useMemo(() => {
@@ -47,7 +48,7 @@ export function StatsCards() {
 
   }, [employees, workDays]);
 
-  const isLoading = isLoadingEmployees || isLoadingWorkDays;
+  const isLoading = isUserLoading || isLoadingEmployees || isLoadingWorkDays;
 
   const stats = [
     { title: "إجمالي الموظفين", value: statsData.totalEmployees, icon: Users, color: "text-primary" },

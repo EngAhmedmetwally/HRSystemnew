@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import type { Employee } from '@/lib/types';
 
@@ -50,11 +50,12 @@ export function AnomalyDetector() {
   );
   const [showResult, setShowResult] = useState(false);
   const { firestore } = useFirebase();
+  const { user, isUserLoading } = useUser();
 
   const employeesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, 'employees');
-  }, [firestore]);
+  }, [firestore, user]);
 
   const { data: employees, isLoading: isLoadingEmployees } = useCollection<Employee>(employeesQuery);
 
@@ -87,8 +88,8 @@ export function AnomalyDetector() {
           <div className="space-y-2">
             <Label htmlFor="employeeId">الموظف</Label>
             <Select name="employeeId" required>
-              <SelectTrigger id="employeeId" disabled={isLoadingEmployees}>
-                <SelectValue placeholder={isLoadingEmployees ? "جاري تحميل الموظفين..." : "اختر موظفًا"} />
+              <SelectTrigger id="employeeId" disabled={isLoadingEmployees || isUserLoading}>
+                <SelectValue placeholder={(isLoadingEmployees || isUserLoading) ? "جاري تحميل الموظفين..." : "اختر موظفًا"} />
               </SelectTrigger>
               <SelectContent>
                 {employees

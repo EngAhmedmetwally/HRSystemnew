@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirebase, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query, where, Timestamp } from "firebase/firestore";
 import type { WorkDay, Employee } from "@/lib/types";
 import { Loader2 } from "lucide-react";
@@ -43,9 +43,10 @@ const statusMap = {
 
 export default function DashboardPage() {
     const { firestore } = useFirebase();
+    const { user, isUserLoading } = useUser();
 
     const dailyWorkDaysQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !user) return null;
         const startOfDay = new Date();
         startOfDay.setHours(0, 0, 0, 0);
         const startOfDayTimestamp = Timestamp.fromDate(startOfDay);
@@ -53,14 +54,14 @@ export default function DashboardPage() {
         // Since Firestore paths are /{year}/{month}/{day}/{employeeId} we cannot query just for a day.
         // We have to query the root `workDays` collection.
         return query(collection(firestore, 'workDays'), where('checkInTime', '>=', startOfDayTimestamp));
-    }, [firestore]);
+    }, [firestore, user]);
     
     const { data: workDays, isLoading: isLoadingWorkDays } = useCollection<WorkDay>(dailyWorkDaysQuery);
 
     const employeesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !user) return null;
         return collection(firestore, 'employees');
-    }, [firestore]);
+    }, [firestore, user]);
 
     const { data: employees, isLoading: isLoadingEmployees } = useCollection<Employee>(employeesQuery);
 
@@ -75,7 +76,7 @@ export default function DashboardPage() {
         }));
     }, [workDays, employees]);
 
-    const isLoading = isLoadingWorkDays || isLoadingEmployees;
+    const isLoading = isUserLoading || isLoadingWorkDays || isLoadingEmployees;
 
   return (
     <div className="flex-1 space-y-4 md:space-y-8">
