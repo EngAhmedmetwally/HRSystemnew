@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useFormStatus } from 'react-dom';
 import { runAttendanceAnomalyDetection } from '@/app/actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import {
 import { employees } from '@/lib/data';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useActionState as useReactActionState } from 'react';
 
 const initialState = {
   isAnomaly: undefined,
@@ -41,7 +42,7 @@ function SubmitButton() {
 }
 
 export function AnomalyDetector() {
-  const [state, formAction] = useFormState(
+  const [state, formAction] = useReactActionState(
     runAttendanceAnomalyDetection,
     initialState
   );
