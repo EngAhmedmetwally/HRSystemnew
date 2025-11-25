@@ -99,15 +99,15 @@ export default function NewEmployeePage() {
   return (
     <>
        <div className="flex items-center justify-between mb-6">
-        <div className='flex items-center gap-4'>
+        <div className='flex items-center gap-2 md:gap-4'>
             <Button asChild variant="outline" size="icon">
                 <Link href="/employees">
                     <ArrowRight className="h-4 w-4" />
                 </Link>
             </Button>
             <div>
-            <h2 className="text-2xl font-bold tracking-tight">إضافة موظف جديد</h2>
-            <p className="text-muted-foreground">
+            <h2 className="text-xl md:text-2xl font-bold tracking-tight">إضافة موظف جديد</h2>
+            <p className="text-muted-foreground text-sm md:text-base">
                 قم بملء النموذج أدناه لإنشاء حساب موظف جديد.
             </p>
             </div>
@@ -226,7 +226,7 @@ export default function NewEmployeePage() {
                     name="permissions"
                     render={() => (
                     <FormItem>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {screens.map((item) => (
                             <FormField
                             key={item.id}
@@ -285,7 +285,7 @@ export default function NewEmployeePage() {
                         <RadioGroup
                             onValueChange={field.onChange}
                             defaultValue={field.value}
-                            className="flex items-center gap-4"
+                            className="flex flex-col sm:flex-row items-start sm:items-center gap-4"
                         >
                             <FormItem className="flex items-center space-x-2 space-y-0">
                             <FormControl>

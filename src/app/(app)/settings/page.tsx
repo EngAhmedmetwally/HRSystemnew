@@ -99,7 +99,7 @@ export default function SettingsPage() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="grid gap-8 md:grid-cols-2">
+        <div className="grid gap-8 md:grid-cols-1 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle>إعدادات الحضور العامة</CardTitle>
@@ -155,7 +155,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-2">
+          <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>لائحة التأخير</CardTitle>
               <CardDescription>
@@ -181,8 +181,8 @@ export default function SettingsPage() {
                 <div className="space-y-4">
                     <Label>مستويات الخصم</Label>
                     {deductionLevels.map((level, index) => (
-                        <div key={level.id} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 border rounded-md items-end">
-                            <div className="space-y-2">
+                        <div key={level.id} className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4 border rounded-md items-end">
+                            <div className="space-y-2 sm:col-span-1 md:col-span-1">
                                 <Label htmlFor={`minutes-${level.id}`} className="text-xs">بعد (كم دقيقة تأخير)</Label>
                                 <Input 
                                     id={`minutes-${level.id}`}
@@ -192,7 +192,7 @@ export default function SettingsPage() {
                                     placeholder="مثال: 30"
                                 />
                             </div>
-                            <div className="space-y-2">
+                             <div className="space-y-2 sm:col-span-2 md:col-span-1">
                                 <Label htmlFor={`deductionType-${level.id}`} className="text-xs">نوع الخصم</Label>
                                  <Select
                                     value={level.deductionType}
@@ -208,7 +208,7 @@ export default function SettingsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-2 sm:col-span-2 md:col-span-1">
                                 <Label htmlFor={`deductionValue-${level.id}`} className="text-xs">قيمة الخصم ({getDeductionUnit(level.deductionType)})</Label>
                                 <Input 
                                     id={`deductionValue-${level.id}`}
@@ -218,7 +218,7 @@ export default function SettingsPage() {
                                     placeholder="القيمة"
                                 />
                             </div>
-                            <div>
+                            <div className="sm:col-span-1 md:col-span-1 flex items-end">
                                 <Button variant="destructive" size="icon" onClick={() => removeLevel(level.id)} type="button">
                                     <Trash2 className="h-4 w-4" />
                                     <span className="sr-only">إزالة المستوى</span>

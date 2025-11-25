@@ -31,7 +31,7 @@ export function RealtimeAttendance() {
           <TableHeader>
             <TableRow>
               <TableHead>الموظف</TableHead>
-              <TableHead>القسم</TableHead>
+              <TableHead className="hidden sm:table-cell">القسم</TableHead>
               <TableHead className="hidden md:table-cell">وقت الحضور</TableHead>
               <TableHead>الحالة</TableHead>
             </TableRow>
@@ -48,7 +48,7 @@ export function RealtimeAttendance() {
                     <div className="font-medium">{record.employee.name}</div>
                   </div>
                 </TableCell>
-                <TableCell>{record.employee.department}</TableCell>
+                <TableCell className="hidden sm:table-cell">{record.employee.department}</TableCell>
                 <TableCell className="hidden md:table-cell">
                   {record.checkInTime}
                 </TableCell>

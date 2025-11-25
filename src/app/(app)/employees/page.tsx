@@ -39,14 +39,14 @@ export default function EmployeesPage() {
   return (
     <TooltipProvider>
       <div>
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">إدارة الموظفين</h2>
             <p className="text-muted-foreground">
               عرض وتعديل بيانات الموظفين في النظام.
             </p>
           </div>
-          <Button asChild>
+          <Button asChild className="w-full sm:w-auto">
             <Link href="/employees/new">
               <PlusCircle className="ml-2 h-4 w-4" />
               إضافة موظف جديد
@@ -65,10 +65,9 @@ export default function EmployeesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>اسم الموظف</TableHead>
-                  <TableHead>رقم الموظف</TableHead>
-                  <TableHead>القسم</TableHead>
-                  <TableHead>المنصب الوظيفي</TableHead>
-
+                  <TableHead className="hidden sm:table-cell">رقم الموظف</TableHead>
+                  <TableHead className="hidden md:table-cell">القسم</TableHead>
+                  <TableHead className="hidden lg:table-cell">المنصب الوظيفي</TableHead>
                   <TableHead>الحالة</TableHead>
                   <TableHead>الإجراءات</TableHead>
                 </TableRow>
@@ -82,12 +81,15 @@ export default function EmployeesPage() {
                           <AvatarImage src={employee.avatar.imageUrl} alt="Avatar" />
                           <AvatarFallback>{employee.name.charAt(0)}</AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">{employee.name}</span>
+                        <div className="flex flex-col">
+                            <span className="font-medium">{employee.name}</span>
+                            <span className="text-muted-foreground text-sm sm:hidden">{employee.id}</span>
+                        </div>
                       </div>
                     </TableCell>
-                    <TableCell>{employee.id}</TableCell>
-                    <TableCell>{employee.department}</TableCell>
-                    <TableCell>{employee.jobTitle}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{employee.id}</TableCell>
+                    <TableCell className="hidden md:table-cell">{employee.department}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{employee.jobTitle}</TableCell>
                     <TableCell>
                       <Badge variant={statusMap[employee.status].variant as any} className={statusMap[employee.status].className}>
                         {statusMap[employee.status].text}
