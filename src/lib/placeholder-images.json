@@ -1,3 +1,46 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "avatar1",
+      "description": "Avatar of Ahmed Ali",
+      "imageUrl": "https://images.unsplash.com/photo-1608540620072-c2fb5f433c97?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxwZXJzb24lMjBtYW58ZW58MHx8fHwxNzY0MDc2MTgyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person man"
+    },
+    {
+      "id": "avatar2",
+      "description": "Avatar of Fatima Zahra",
+      "imageUrl": "https://images.unsplash.com/photo-1490088715170-e367d03a58f7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxwZXJzb24lMjB3b21hbnxlbnwwfHx8fDE3NjQwNzYxODJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person woman"
+    },
+    {
+      "id": "avatar3",
+      "description": "Avatar of Youssef Hassan",
+      "imageUrl": "https://images.unsplash.com/flagged/photo-1595514191830-3e96a518989b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwZXJzb24lMjBtYW58ZW58MHx8fHwxNzY0MDc2MTgyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person man"
+    },
+    {
+      "id": "avatar4",
+      "description": "Avatar of Mariam Khaled",
+      "imageUrl": "https://images.unsplash.com/photo-1518336106683-3e161e20a9d7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cGVyc29uJTIwd29tYW58ZW58MHx8fHwxNzY0MDc2MTgyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person woman"
+    },
+    {
+      "id": "avatar5",
+      "description": "Avatar of Omar Said",
+      "imageUrl": "https://images.unsplash.com/photo-1626601237510-efb67e9195aa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwZXJzb24lMjBtYW58ZW58MHx8fHwxNzY0MDc2MTgyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person man"
+    },
+    {
+      "id": "avatar6",
+      "description": "Avatar of a user",
+      "imageUrl": "https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxwZXJzb258ZW58MHx8fHwxNzY0MDk3NDU5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person"
+    },
+    {
+      "id": "qr-code",
+      "description": "A placeholder QR code",
+      "imageUrl": "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=HR-Pulse-Check-In",
+      "imageHint": "qr code"
+    }
+  ]
 }
