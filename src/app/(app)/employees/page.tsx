@@ -26,7 +26,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirebase, useMemoFirebase, useUser } from "@/firebase";
 import { collection } from "firebase/firestore";
 import type { Employee } from "@/lib/types";
 import { findImage } from "@/lib/placeholder-images";
@@ -40,11 +40,12 @@ const statusMap = {
 
 export default function EmployeesPage() {
   const { firestore } = useFirebase();
+  const { user } = useUser();
 
   const employeesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, 'employees');
-  }, [firestore]);
+  }, [firestore, user]);
   
   const { data: employees, isLoading } = useCollection<Employee>(employeesQuery);
 

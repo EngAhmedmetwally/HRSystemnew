@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirebase, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import type { WorkDay, Employee } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
@@ -40,21 +40,22 @@ const statusMap = {
 
 export default function AttendanceLogPage() {
   const { firestore } = useFirebase();
+  const { user, isUserLoading } = useUser();
 
   const workDaysQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return query(
       collection(firestore, 'workDays'),
       orderBy('checkInTime', 'desc')
     );
-  }, [firestore]);
+  }, [firestore, user]);
 
   const { data: workDays, isLoading: isLoadingWorkDays } = useCollection<WorkDay>(workDaysQuery);
   
   const employeesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, 'employees');
-  }, [firestore]);
+  }, [firestore, user]);
 
   const { data: employees, isLoading: isLoadingEmployees } = useCollection<Employee>(employeesQuery);
 
@@ -69,7 +70,7 @@ export default function AttendanceLogPage() {
     }));
   }, [workDays, employees]);
 
-  const isLoading = isLoadingWorkDays || isLoadingEmployees;
+  const isLoading = isLoadingWorkDays || isLoadingEmployees || isUserLoading;
 
   return (
     <Card>
