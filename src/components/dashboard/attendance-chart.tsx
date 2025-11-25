@@ -14,7 +14,16 @@ import {
   ChartTooltipContent,
   ChartConfig
 } from "@/components/ui/chart";
-import { chartData } from "@/lib/data";
+
+// This is mock data and should be replaced with real data from your backend.
+const chartData = [
+  { date: 'الأحد', حاضر: 0, متأخر: 0, غائب: 0 },
+  { date: 'الاثنين', حاضر: 0, متأخر: 0, غائب: 0 },
+  { date: 'الثلاثاء', حاضر: 0, متأخر: 0, غائب: 0 },
+  { date: 'الأربعاء', حاضر: 0, متأخر: 0, غائب: 0 },
+  { date: 'الخميس', حاضر: 0, متأخر: 0, غائب: 0 },
+];
+
 
 const chartConfig = {
   حاضر: {
@@ -32,7 +41,7 @@ export function AttendanceChart() {
     <Card className="shadow-sm">
       <CardHeader>
         <CardTitle>نظرة عامة على الحضور</CardTitle>
-        <CardDescription>ملخص الحضور خلال الأسبوع الماضي</CardDescription>
+        <CardDescription>ملخص الحضور خلال الأسبوع الماضي (بيانات تجريبية)</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[250px] w-full">

@@ -1,12 +1,59 @@
+'use client';
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Clock, AlertTriangle, UserX } from "lucide-react";
+import { Users, Clock, AlertTriangle, UserX, Loader2 } from "lucide-react";
+import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
+import { collection, query, where, Timestamp } from "firebase/firestore";
+import type { Employee, WorkDay } from "@/lib/types";
+import { useMemo } from "react";
 
 export function StatsCards() {
+  const { firestore } = useFirebase();
+
+  const employeesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'employees');
+  }, [firestore]);
+  const { data: employees, isLoading: isLoadingEmployees } = useCollection<Employee>(employeesQuery);
+
+  const dailyWorkDaysQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const startOfDayTimestamp = Timestamp.fromDate(startOfDay);
+    return query(collection(firestore, 'workDays'), where('checkInTime', '>=', startOfDayTimestamp));
+  }, [firestore]);
+  const { data: workDays, isLoading: isLoadingWorkDays } = useCollection<WorkDay>(dailyWorkDaysQuery);
+
+  const statsData = useMemo(() => {
+    if (!employees || !workDays) {
+      return {
+        totalEmployees: null,
+        onTime: null,
+        late: null,
+        absent: null,
+      };
+    }
+    
+    const activeEmployees = employees.filter(e => e.status === 'active');
+    const presentIds = new Set(workDays.map(wd => wd.employeeId));
+
+    const totalEmployees = activeEmployees.length;
+    const onTime = workDays.filter(wd => wd.delayMinutes === 0).length;
+    const late = workDays.filter(wd => wd.delayMinutes > 0).length;
+    const absent = activeEmployees.filter(emp => !presentIds.has(emp.id)).length;
+    
+    return { totalEmployees, onTime, late, absent };
+
+  }, [employees, workDays]);
+
+  const isLoading = isLoadingEmployees || isLoadingWorkDays;
+
   const stats = [
-    { title: "إجمالي الموظفين", value: "31", icon: Users, color: "text-primary" },
-    { title: "حضور في الوقت", value: "28", icon: Clock, color: "text-green-500" },
-    { title: "متأخر اليوم", value: "2", icon: AlertTriangle, color: "text-yellow-500" },
-    { title: "غائب اليوم", value: "1", icon: UserX, color: "text-red-500" },
+    { title: "إجمالي الموظفين", value: statsData.totalEmployees, icon: Users, color: "text-primary" },
+    { title: "حضور في الوقت", value: statsData.onTime, icon: Clock, color: "text-green-500" },
+    { title: "متأخر اليوم", value: statsData.late, icon: AlertTriangle, color: "text-yellow-500" },
+    { title: "غائب اليوم", value: statsData.absent, icon: UserX, color: "text-red-500" },
   ];
 
   return (
@@ -18,7 +65,11 @@ export function StatsCards() {
             <stat.icon className={`h-5 w-5 text-muted-foreground ${stat.color}`} />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stat.value}</div>
+            {isLoading ? (
+                <div className="h-7 w-6 animate-pulse rounded-md bg-muted" />
+            ) : (
+                <div className="text-2xl font-bold">{stat.value ?? '0'}</div>
+            )}
           </CardContent>
         </Card>
       ))}

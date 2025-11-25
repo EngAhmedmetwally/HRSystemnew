@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useFormStatus } from 'react-dom';
+import { useActionState, useFormStatus } from 'react';
 import { runAttendanceAnomalyDetection } from '@/app/actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -20,10 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { employees } from '@/lib/data';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useActionState as useReactActionState } from 'react';
+import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import type { Employee } from '@/lib/types';
 
 const initialState = {
   isAnomaly: undefined,
@@ -47,6 +49,14 @@ export function AnomalyDetector() {
     initialState
   );
   const [showResult, setShowResult] = useState(false);
+  const { firestore } = useFirebase();
+
+  const employeesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'employees');
+  }, [firestore]);
+
+  const { data: employees, isLoading: isLoadingEmployees } = useCollection<Employee>(employeesQuery);
 
   useEffect(() => {
     if (state.isAnomaly !== undefined || state.error) {
@@ -77,12 +87,12 @@ export function AnomalyDetector() {
           <div className="space-y-2">
             <Label htmlFor="employeeId">الموظف</Label>
             <Select name="employeeId" required>
-              <SelectTrigger id="employeeId">
-                <SelectValue placeholder="اختر موظفًا" />
+              <SelectTrigger id="employeeId" disabled={isLoadingEmployees}>
+                <SelectValue placeholder={isLoadingEmployees ? "جاري تحميل الموظفين..." : "اختر موظفًا"} />
               </SelectTrigger>
               <SelectContent>
                 {employees
-                  .filter((e) => e.status === 'active')
+                  ?.filter((e) => e.status === 'active')
                   .map((employee) => (
                     <SelectItem key={employee.id} value={employee.id}>
                       {employee.name}
@@ -132,5 +142,3 @@ export function AnomalyDetector() {
     </Card>
   );
 }
-
-    

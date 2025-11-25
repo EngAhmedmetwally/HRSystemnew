@@ -9,7 +9,6 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { payrollData } from "@/lib/data";
 import { FileText, ChevronRight, ChevronLeft, ArrowUpCircle, ArrowDownCircle, Banknote, FileDigit } from "lucide-react";
 import {
   Table,
@@ -20,6 +19,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useState, useMemo } from "react";
+import type { Payroll } from '@/lib/types';
+
 
 const statusMap = {
   paid: { text: "مدفوع", className: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400" },
@@ -42,14 +43,16 @@ export default function PayrollPage() {
         return newDate;
     });
   };
-
-  const currentMonthData = useMemo(() => {
-    // In a real app, you would fetch data for the current month
-    // For this demo, we'll just return the same data regardless of the month
-    return payrollData;
+  
+  // NOTE: This uses mock data. In a real app, you would fetch this from Firestore.
+  const currentMonthData: Payroll[] = useMemo(() => {
+    return [];
   }, [currentDate]);
 
   const totals = useMemo(() => {
+    if (!currentMonthData) {
+        return { baseSalary: 0, allowances: 0, deductions: 0, netSalary: 0 };
+    }
     return currentMonthData.reduce((acc, payroll) => {
         acc.baseSalary += payroll.baseSalary;
         acc.allowances += payroll.allowances;
@@ -138,77 +141,84 @@ export default function PayrollPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Mobile View */}
-          <div className="md:hidden">
-            <div className="space-y-4">
-              {currentMonthData.map((payroll) => (
-                <Card key={payroll.id} className="bg-muted/50">
-                  <CardHeader className="p-4">
-                    <div className="flex justify-between items-center">
-                      <CardTitle className="text-lg">{payroll.employeeName}</CardTitle>
-                       <Badge variant="secondary" className={statusMap[payroll.status as keyof typeof statusMap].className}>
-                        {statusMap[payroll.status as keyof typeof statusMap].text}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0 text-sm">
-                    <div className="flex justify-between border-t border-border pt-2 mt-2">
-                      <p className="text-muted-foreground">الراتب الصافي</p>
-                      <p className="font-semibold">{formatCurrency(payroll.netSalary)}</p>
-                    </div>
-                    <div className="flex justify-between mt-2">
-                      <p className="text-muted-foreground">الراتب الأساسي</p>
-                      <p>{formatCurrency(payroll.baseSalary)}</p>
-                    </div>
-                    <div className="flex justify-between mt-2">
-                      <p className="text-muted-foreground">البدلات</p>
-                      <p className="text-green-600 dark:text-green-400">{formatCurrency(payroll.allowances)}</p>
-                    </div>
-                    <div className="flex justify-between mt-2">
-                      <p className="text-muted-foreground">الخصومات</p>
-                      <p className="text-red-600 dark:text-red-400">{formatCurrency(payroll.deductions)}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-          
-          {/* Desktop View */}
-          <div className="hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>اسم الموظف</TableHead>
-                  <TableHead>الراتب الأساسي</TableHead>
-                  <TableHead>البدلات</TableHead>
-                  <TableHead>الخصومات</TableHead>
-                  <TableHead>الراتب الصافي</TableHead>
-                  <TableHead>الحالة</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          {currentMonthData.length === 0 ? (
+             <div className="text-center py-12 text-muted-foreground">
+                <p>لا توجد بيانات رواتب لهذا الشهر.</p>
+                <p className="text-sm">يمكنك إنشاء تقرير جديد من الزر أعلاه.</p>
+             </div>
+          ) : (
+            <>
+            {/* Mobile View */}
+            <div className="md:hidden">
+                <div className="space-y-4">
                 {currentMonthData.map((payroll) => (
-                  <TableRow key={payroll.id}>
-                    <TableCell className="font-medium">{payroll.employeeName}</TableCell>
-                    <TableCell>{formatCurrency(payroll.baseSalary)}</TableCell>
-                    <TableCell className="text-green-600 dark:text-green-400">{formatCurrency(payroll.allowances)}</TableCell>
-                    <TableCell className="text-red-600 dark:text-red-400">{formatCurrency(payroll.deductions)}</TableCell>
-                    <TableCell className="font-semibold">{formatCurrency(payroll.netSalary)}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={statusMap[payroll.status as keyof typeof statusMap].className}>
-                        {statusMap[payroll.status as keyof typeof statusMap].text}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
+                    <Card key={payroll.id} className="bg-muted/50">
+                    <CardHeader className="p-4">
+                        <div className="flex justify-between items-center">
+                        <CardTitle className="text-lg">{payroll.employeeName}</CardTitle>
+                        <Badge variant="secondary" className={statusMap[payroll.status as keyof typeof statusMap].className}>
+                            {statusMap[payroll.status as keyof typeof statusMap].text}
+                        </Badge>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0 text-sm">
+                        <div className="flex justify-between border-t border-border pt-2 mt-2">
+                        <p className="text-muted-foreground">الراتب الصافي</p>
+                        <p className="font-semibold">{formatCurrency(payroll.netSalary)}</p>
+                        </div>
+                        <div className="flex justify-between mt-2">
+                        <p className="text-muted-foreground">الراتب الأساسي</p>
+                        <p>{formatCurrency(payroll.baseSalary)}</p>
+                        </div>
+                        <div className="flex justify-between mt-2">
+                        <p className="text-muted-foreground">البدلات</p>
+                        <p className="text-green-600 dark:text-green-400">{formatCurrency(payroll.allowances)}</p>
+                        </div>
+                        <div className="flex justify-between mt-2">
+                        <p className="text-muted-foreground">الخصومات</p>
+                        <p className="text-red-600 dark:text-red-400">{formatCurrency(payroll.deductions)}</p>
+                        </div>
+                    </CardContent>
+                    </Card>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
+                </div>
+            </div>
+            
+            {/* Desktop View */}
+            <div className="hidden md:block">
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>اسم الموظف</TableHead>
+                    <TableHead>الراتب الأساسي</TableHead>
+                    <TableHead>البدلات</TableHead>
+                    <TableHead>الخصومات</TableHead>
+                    <TableHead>الراتب الصافي</TableHead>
+                    <TableHead>الحالة</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {currentMonthData.map((payroll) => (
+                    <TableRow key={payroll.id}>
+                        <TableCell className="font-medium">{payroll.employeeName}</TableCell>
+                        <TableCell>{formatCurrency(payroll.baseSalary)}</TableCell>
+                        <TableCell className="text-green-600 dark:text-green-400">{formatCurrency(payroll.allowances)}</TableCell>
+                        <TableCell className="text-red-600 dark:text-red-400">{formatCurrency(payroll.deductions)}</TableCell>
+                        <TableCell className="font-semibold">{formatCurrency(payroll.netSalary)}</TableCell>
+                        <TableCell>
+                        <Badge variant="secondary" className={statusMap[payroll.status as keyof typeof statusMap].className}>
+                            {statusMap[payroll.status as keyof typeof statusMap].text}
+                        </Badge>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
   );
 }
-
-    
