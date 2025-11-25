@@ -15,7 +15,7 @@ const AttendanceAnomalyInputSchema = z.object({
   employeeId: z.string().describe('The ID of the employee.'),
   clockInTime: z.string().describe('The clock-in time of the employee (ISO format).'),
   clockOutTime: z.string().optional().describe('The clock-out time of the employee (ISO format).'),
-  location: z.string().optional().describe('The location of the employee during clock-in (optional).'),
+  location: z.string().optional().describe("The employee's location coordinates (latitude,longitude) during clock-in (optional)."),
   attendanceHistory: z.string().describe('The attendance history of the employee (JSON format).'),
 });
 export type AttendanceAnomalyInput = z.infer<typeof AttendanceAnomalyInputSchema>;
@@ -34,7 +34,7 @@ const prompt = ai.definePrompt({
   name: 'attendanceAnomalyPrompt',
   input: {schema: AttendanceAnomalyInputSchema},
   output: {schema: AttendanceAnomalyOutputSchema},
-  prompt: `You are an HR expert specializing in detecting attendance anomalies.
+  prompt: `You are an HR expert specializing in detecting attendance anomalies. The main work location is at coordinates (24.7136, 46.6753).
 
 You will be provided with the employee ID, clock-in time, clock-out time, location (optional), and attendance history of an employee.
 
@@ -43,7 +43,7 @@ Your task is to determine if the current attendance record is an anomaly based o
 Consider the following factors when determining if an anomaly exists:
 
 - Unusual clock-in/out times compared to the employee's historical attendance.
-- Suspicious locations (if provided).
+- **Suspicious locations: Anomaly if the location is provided and is more than 500 meters away from the main work location (24.7136, 46.6753).**
 - Inconsistencies in the attendance record.
 
 Respond with whether the record is an anomaly or not.
