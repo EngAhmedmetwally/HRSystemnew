@@ -1,13 +1,20 @@
 import type { ImagePlaceholder } from './placeholder-images';
 
 export interface Employee {
-  id: string;
+  id: string; // Corresponds to Firebase Auth UID
+  employeeId: string; // Custom employee ID
   name: string;
-  avatar: ImagePlaceholder;
+  avatar?: ImagePlaceholder; // Make avatar optional as it might not be in Firestore
   department: string;
   jobTitle: string;
+  contractType: 'full-time' | 'part-time';
+  hireDate: string; // ISO date string
   status: 'active' | 'on_leave' | 'inactive';
+  baseSalary: number;
+  deviceVerificationEnabled?: boolean;
+  deviceId?: string;
 }
+
 
 export interface AttendanceRecord {
   employee: Employee;

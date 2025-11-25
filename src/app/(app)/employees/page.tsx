@@ -19,14 +19,17 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { employees } from "@/lib/data";
-import { PlusCircle, Pencil } from "lucide-react";
+import { PlusCircle, Pencil, Loader2 } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
+import type { Employee } from "@/lib/types";
+import { findImage } from "@/lib/placeholder-images";
 
 
 const statusMap = {
@@ -36,6 +39,15 @@ const statusMap = {
 };
 
 export default function EmployeesPage() {
+  const { firestore } = useFirebase();
+
+  const employeesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'employees');
+  }, [firestore]);
+  
+  const { data: employees, isLoading } = useCollection<Employee>(employeesQuery);
+
   return (
     <TooltipProvider>
       <div>
@@ -57,10 +69,15 @@ export default function EmployeesPage() {
           <CardHeader>
             <CardTitle>قائمة الموظفين</CardTitle>
             <CardDescription>
-              تم العثور على {employees.length} موظف.
+              {isLoading ? 'جاري تحميل الموظفين...' : `تم العثور على ${employees?.length || 0} موظف.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {isLoading ? (
+               <div className="flex justify-center items-center h-48">
+                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+               </div>
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -73,21 +90,21 @@ export default function EmployeesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {employees.map((employee) => (
+                {employees?.map((employee) => (
                   <TableRow key={employee.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
-                          <AvatarImage src={employee.avatar.imageUrl} alt="Avatar" />
+                          <AvatarImage src={findImage(`avatar${(parseInt(employee.employeeId.slice(-1)) % 5) + 1}`)?.imageUrl} alt="Avatar" />
                           <AvatarFallback>{employee.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col">
                             <span className="font-medium">{employee.name}</span>
-                            <span className="text-muted-foreground text-sm sm:hidden">{employee.id}</span>
+                            <span className="text-muted-foreground text-sm sm:hidden">{employee.employeeId}</span>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">{employee.id}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{employee.employeeId}</TableCell>
                     <TableCell className="hidden md:table-cell">{employee.department}</TableCell>
                     <TableCell className="hidden lg:table-cell">{employee.jobTitle}</TableCell>
                     <TableCell>
@@ -114,6 +131,7 @@ export default function EmployeesPage() {
                 ))}
               </TableBody>
             </Table>
+            )}
           </CardContent>
         </Card>
       </div>

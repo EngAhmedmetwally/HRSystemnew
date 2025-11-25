@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -22,73 +21,96 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { Save, ArrowRight } from 'lucide-react';
+import { Save, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Switch } from '@/components/ui/switch';
+import { useRouter } from 'next/navigation';
+import { useFirebase, setDocumentNonBlocking } from '@/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc } from 'firebase/firestore';
 
-const screens = [
-  { id: 'dashboard', label: 'لوحة التحكم' },
-  { id: 'employees', label: 'الموظفين' },
-  { id: 'attendance', label: 'الحاضرين' },
-  { id: 'scan', label: 'مسح QR' },
-  { id: 'payroll', label: 'الرواتب' },
-  { id: 'settings', label: 'الإعدادات' },
-] as const;
 
 const employeeFormSchema = z.object({
   name: z.string().min(1, { message: 'الاسم مطلوب' }),
-  username: z.string().min(1, { message: 'اسم المستخدم مطلوب' }),
+  employeeId: z.string().min(1, { message: 'رقم الموظف مطلوب' }),
+  email: z.string().email({ message: 'البريد الإلكتروني غير صالح' }),
   password: z.string().min(6, { message: 'كلمة السر يجب أن تكون 6 أحرف على الأقل' }),
-  status: z.enum(['active', 'inactive'], { required_error: 'الحالة مطلوبة' }),
-  salary: z.coerce.number().min(0, { message: 'الراتب يجب أن يكون رقماً موجباً' }),
-  attendanceType: z.enum(['general', 'custom'], { required_error: 'الرجاء اختيار نوع وقت الحضور' }),
-  checkInTime: z.string().optional(),
-  checkOutTime: z.string().optional(),
-  permissions: z.array(z.string()).refine((value) => value.some((item) => item), {
-    message: 'يجب أن تختار صلاحية واحدة على الأقل.',
-  }),
+  department: z.string().min(1, { message: 'القسم مطلوب' }),
+  jobTitle: z.string().min(1, { message: 'المنصب الوظيفي مطلوب' }),
+  contractType: z.enum(['full-time', 'part-time'], { required_error: 'نوع العقد مطلوب' }),
+  hireDate: z.string().min(1, { message: 'تاريخ التعيين مطلوب' }),
+  baseSalary: z.coerce.number().min(0, { message: 'الراتب يجب أن يكون رقماً موجباً' }),
+  status: z.enum(['active', 'inactive', 'on_leave'], { required_error: 'الحالة مطلوبة' }),
   deviceVerificationEnabled: z.boolean().default(false),
-}).refine(data => {
-    if (data.attendanceType === 'custom') {
-        return !!data.checkInTime && !!data.checkOutTime;
-    }
-    return true;
-}, {
-    message: "أوقات الحضور والانصراف المخصصة مطلوبة",
-    path: ["checkInTime"],
 });
 
 type EmployeeFormValues = z.infer<typeof employeeFormSchema>;
 
 export default function NewEmployeePage() {
   const { toast } = useToast();
+  const router = useRouter();
+  const { auth, firestore } = useFirebase();
+
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(employeeFormSchema),
     defaultValues: {
       name: '',
-      username: '',
+      employeeId: '',
+      email: '',
       password: '',
+      department: '',
+      jobTitle: '',
+      contractType: 'full-time',
+      hireDate: new Date().toISOString().split('T')[0], // Default to today
+      baseSalary: 0,
       status: 'active',
-      salary: 0,
-      attendanceType: 'general',
-      permissions: [],
       deviceVerificationEnabled: false,
     },
   });
 
-  const attendanceType = form.watch('attendanceType');
+  async function onSubmit(data: EmployeeFormValues) {
+    if (!auth || !firestore) {
+      toast({ variant: 'destructive', title: 'خطأ', description: 'لم يتم تهيئة خدمات Firebase.' });
+      return;
+    }
 
-  function onSubmit(data: EmployeeFormValues) {
-    // In a real app, you would save this data to your database
-    console.log(data);
-    toast({
-      title: 'تمت إضافة الموظف بنجاح',
-      description: `تم إنشاء حساب للموظف ${data.name}.`,
-    });
-    form.reset();
+    try {
+      // 1. Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
+      
+      // 2. Prepare employee data for Firestore (excluding password)
+      const { password, ...employeeData } = data;
+      const employeeDoc = {
+        ...employeeData,
+        id: user.uid, // Use the UID from Auth as the document ID
+      };
+
+      // 3. Save employee data to Firestore
+      const employeeDocRef = doc(firestore, 'employees', user.uid);
+      setDocumentNonBlocking(employeeDocRef, employeeDoc, { merge: false });
+
+      toast({
+        title: 'تمت إضافة الموظف بنجاح',
+        description: `تم إنشاء حساب للموظف ${data.name}.`,
+      });
+      router.push('/employees'); // Redirect to employees list on success
+    } catch (error: any) {
+      console.error("Error creating employee:", error);
+      let description = "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.";
+      if (error.code === 'auth/email-already-in-use') {
+        description = "هذا البريد الإلكتروني مستخدم بالفعل.";
+      } else if (error.code === 'auth/weak-password') {
+        description = "كلمة السر ضعيفة جدًا. يرجى اختيار كلمة سر أقوى.";
+      }
+      toast({
+        variant: 'destructive',
+        title: 'فشل إنشاء الموظف',
+        description: description,
+      });
+    }
   }
 
   return (
@@ -113,9 +135,9 @@ export default function NewEmployeePage() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <Card>
             <CardHeader>
-              <CardTitle>المعلومات الأساسية</CardTitle>
+              <CardTitle>المعلومات الأساسية والوظيفية</CardTitle>
               <CardDescription>
-                تفاصيل الحساب الأساسية للموظف.
+                تفاصيل الحساب الأساسية والبيانات الوظيفية للموظف.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6 md:grid-cols-2">
@@ -134,13 +156,32 @@ export default function NewEmployeePage() {
               />
               <FormField
                 control={form.control}
-                name="username"
+                name="employeeId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>اسم المستخدم</FormLabel>
+                    <FormLabel>رقم الموظف</FormLabel>
                     <FormControl>
-                      <Input placeholder="مثال: ahmad.ali" {...field} />
+                      <Input placeholder="مثال: E006" {...field} />
                     </FormControl>
+                     <FormDescription>
+                        معرف فريد للموظف داخل الشركة.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>البريد الإلكتروني</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="example@company.com" {...field} />
+                    </FormControl>
+                     <FormDescription>
+                        سيتم استخدامه لتسجيل الدخول.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -158,12 +199,85 @@ export default function NewEmployeePage() {
                   </FormItem>
                 )}
               />
-               <FormField
+              <FormField
                 control={form.control}
-                name="salary"
+                name="department"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>الراتب (EGP)</FormLabel>
+                    <FormLabel>القسم</FormLabel>
+                    <FormControl>
+                      <Input placeholder="مثال: المبيعات" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="jobTitle"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>المنصب الوظيفي</FormLabel>
+                    <FormControl>
+                      <Input placeholder="مثال: مدير مبيعات" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="contractType"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>نوع العقد</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex items-center gap-4"
+                      >
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="full-time" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            دوام كامل
+                          </FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="part-time" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            دوام جزئي
+                          </FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="hireDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>تاريخ التعيين</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="baseSalary"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>الراتب الأساسي (EGP)</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="مثال: 5000" {...field} />
                     </FormControl>
@@ -188,7 +302,15 @@ export default function NewEmployeePage() {
                             <RadioGroupItem value="active" />
                           </FormControl>
                           <FormLabel className="font-normal">
-                            مفعل
+                            نشط
+                          </FormLabel>
+                        </FormItem>
+                         <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="on_leave" />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            في إجازة
                           </FormLabel>
                         </FormItem>
                         <FormItem className="flex items-center space-x-2 space-y-0">
@@ -196,7 +318,7 @@ export default function NewEmployeePage() {
                             <RadioGroupItem value="inactive" />
                           </FormControl>
                           <FormLabel className="font-normal">
-                            غير مفعل
+                            غير نشط
                           </FormLabel>
                         </FormItem>
                       </RadioGroup>
@@ -229,139 +351,10 @@ export default function NewEmployeePage() {
               />
             </CardContent>
           </Card>
-
-          <Card>
-             <CardHeader>
-                <CardTitle>صلاحيات الوصول</CardTitle>
-                <CardDescription>
-                    اختر الشاشات التي يمكن للموظف الوصول إليها.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <FormField
-                    control={form.control}
-                    name="permissions"
-                    render={() => (
-                    <FormItem>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                        {screens.map((item) => (
-                            <FormField
-                            key={item.id}
-                            control={form.control}
-                            name="permissions"
-                            render={({ field }) => {
-                                return (
-                                <FormItem
-                                    key={item.id}
-                                    className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"
-                                >
-                                    <FormControl>
-                                    <Checkbox
-                                        checked={field.value?.includes(item.id)}
-                                        onCheckedChange={(checked) => {
-                                        return checked
-                                            ? field.onChange([...field.value, item.id])
-                                            : field.onChange(
-                                                field.value?.filter(
-                                                (value) => value !== item.id
-                                                )
-                                            );
-                                        }}
-                                    />
-                                    </FormControl>
-                                    <FormLabel className="font-normal">
-                                    {item.label}
-                                    </FormLabel>
-                                </FormItem>
-                                );
-                            }}
-                            />
-                        ))}
-                        </div>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-            </CardContent>
-          </Card>
           
-          <Card>
-            <CardHeader>
-              <CardTitle>إعدادات الحضور والانصراف</CardTitle>
-              <CardDescription>
-                اختر ما إذا كان الموظف سيتبع التوقيت العام أم سيتم تحديد وقت مخصص له.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <FormField
-                    control={form.control}
-                    name="attendanceType"
-                    render={({ field }) => (
-                    <FormItem className="space-y-3">
-                        <FormControl>
-                        <RadioGroup
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            className="flex flex-col sm:flex-row items-start sm:items-center gap-4"
-                        >
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                                <RadioGroupItem value="general" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                                استخدام التوقيت العام
-                            </FormLabel>
-                            </FormItem>
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                                <RadioGroupItem value="custom" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                                تحديد توقيت مخصص
-                            </FormLabel>
-                            </FormItem>
-                        </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-
-                {attendanceType === 'custom' && (
-                    <div className="grid gap-6 md:grid-cols-2 p-4 border rounded-md">
-                        <FormField
-                            control={form.control}
-                            name="checkInTime"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>وقت الحضور المخصص</FormLabel>
-                                <FormControl>
-                                <Input type="time" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="checkOutTime"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>وقت الانصراف المخصص</FormLabel>
-                                <FormControl>
-                                <Input type="time" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    </div>
-                )}
-            </CardContent>
-          </Card>
-
           <div className="flex justify-end">
-            <Button type="submit">
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
               <Save className="ml-2 h-4 w-4" />
               حفظ الموظف
             </Button>
@@ -371,5 +364,3 @@ export default function NewEmployeePage() {
     </>
   );
 }
-
-    

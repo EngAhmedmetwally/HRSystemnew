@@ -13,12 +13,9 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Camera, CheckCircle, XCircle } from 'lucide-react';
 import jsQR from 'jsqr';
-import { useFirebase } from '@/firebase/provider';
+import { useFirebase, useUser, setDocumentNonBlocking } from '@/firebase';
 import { doc, getDoc, serverTimestamp, setDoc, getDocs, collection, query, where, Timestamp } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase';
 
-// Mock current user - in a real app this would come from useUser()
-const MOCK_USER_ID = "E001";
 
 export default function ScanPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -28,6 +25,7 @@ export default function ScanPage() {
   const [isScanning, setIsScanning] = useState(false);
   const { toast } = useToast();
   const { firestore } = useFirebase();
+  const { user } = useUser();
 
   useEffect(() => {
     const getCameraPermission = async () => {
@@ -98,14 +96,17 @@ export default function ScanPage() {
   };
 
   const recordAttendance = async () => {
-      if (!firestore) return;
+      if (!firestore || !user) {
+        toast({ variant: 'destructive', title: 'خطأ', description: 'يجب تسجيل الدخول أولاً' });
+        return;
+      };
 
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth() + 1;
       const day = now.getDate();
       
-      const workDayPath = `/workDays/${year}/${month}/${day}/${MOCK_USER_ID}`;
+      const workDayPath = `/workDays/${year}/${month}/${day}/${user.uid}`;
       const workDayRef = doc(firestore, workDayPath);
 
       // Fetch deduction policies to calculate delay
@@ -127,9 +128,9 @@ export default function ScanPage() {
       try {
           // This simulates a check-in. A real app would check if a record exists to decide between check-in/out
           const workDayData = {
-              id: MOCK_USER_ID,
+              id: user.uid,
               date: serverTimestamp(),
-              employeeId: MOCK_USER_ID,
+              employeeId: user.uid,
               checkInTime: serverTimestamp(),
               checkOutTime: null,
               totalWorkHours: 0,
@@ -235,9 +236,10 @@ export default function ScanPage() {
         )}
         
         <div className="mt-4">
-            <Button onClick={startScan} disabled={!hasCameraPermission || isScanning} className="w-full">
+            <Button onClick={startScan} disabled={!hasCameraPermission || isScanning || !user} className="w-full">
                 {isScanning ? 'جارٍ المسح...' : 'ابدأ المسح'}
             </Button>
+            {!user && <p className="text-center text-red-500 text-sm mt-2">يجب تسجيل الدخول أولاً لاستخدام الماسح.</p>}
         </div>
 
         {scanResult && (
@@ -254,5 +256,3 @@ export default function ScanPage() {
     </Card>
   );
 }
-
-    

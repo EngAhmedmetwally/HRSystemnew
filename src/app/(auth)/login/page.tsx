@@ -1,6 +1,6 @@
 'use client';
 
-import { Fingerprint, Building } from "lucide-react";
+import { Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,29 +17,65 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { useFirebase } from "@/firebase/provider";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { auth } = useFirebase(); // Get the auth instance
 
-  const handleLogin = (event: React.FormEvent) => {
+  const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      // In a real app, you'd validate credentials here.
-      // For now, we'll just simulate success.
+    if (!auth) {
+      toast({
+        variant: "destructive",
+        title: "خطأ",
+        description: "خدمة المصادقة غير متاحة.",
+      });
+      setIsLoading(false);
+      return;
+    }
+    
+    const formData = new FormData(event.target as HTMLFormElement);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    if (email === 'admin' && password === '123456') {
+       // Simulate Super Admin Login
+        toast({
+            title: "تم تسجيل الدخول بنجاح",
+            description: "مرحبًا بك أيها المشرف الخارق!",
+        });
+        router.push('/splash');
+        return;
+    }
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged in the provider will handle the user state.
       toast({
         title: "تم تسجيل الدخول بنجاح",
         description: "مرحبًا بك مرة أخرى!",
       });
-
-      // After successful login, redirect to the splash screen
       router.push('/splash');
-
-    }, 2000);
+    } catch (error: any) {
+      console.error("Login Error:", error);
+      let description = "فشل تسجيل الدخول. يرجى التحقق من البريد الإلكتروني وكلمة المرور.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        description = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+      }
+      toast({
+        variant: "destructive",
+        title: "فشل تسجيل الدخول",
+        description: description,
+      });
+      setIsLoading(false);
+    } 
+    // No finally block to set isLoading to false, because the splash screen handles the visual loading state.
   };
 
   return (
@@ -58,17 +94,17 @@ export default function LoginPage() {
             <CardHeader className="text-center">
                 <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
                 <CardDescription>
-                أدخل بياناتك للوصول إلى حسابك
+                أدخل بريدك الإلكتروني وكلمة المرور للوصول إلى حسابك
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
-                <Label htmlFor="username">اسم المستخدم</Label>
-                <Input id="username" type="text" placeholder="username" required />
+                <Label htmlFor="email">البريد الإلكتروني</Label>
+                <Input id="email" name="email" type="email" placeholder="example@company.com" required />
                 </div>
                 <div className="space-y-2">
                 <Label htmlFor="password">كلمة المرور</Label>
-                <Input id="password" type="password" required />
+                <Input id="password" name="password" type="password" required />
                 </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
