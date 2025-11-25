@@ -12,7 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Save, PlusCircle, Trash2 } from 'lucide-react';
+import { Save, PlusCircle, Trash2, LocateFixed, Loader2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -30,6 +30,7 @@ interface DeductionLevel {
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   
   const [settings, setSettings] = useState({
     checkInTime: '09:00',
@@ -73,6 +74,41 @@ export default function SettingsPage() {
   const removeLevel = (id: string) => {
     setDeductionLevels(levels => levels.filter(level => level.id !== id));
   };
+
+  const handleFetchLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        variant: "destructive",
+        title: "غير مدعوم",
+        description: "خدمات الموقع الجغرافي غير مدعومة في هذا المتصفح.",
+      });
+      return;
+    }
+
+    setIsFetchingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setSettings((prev) => ({
+          ...prev,
+          locationLat: position.coords.latitude.toString(),
+          locationLng: position.coords.longitude.toString(),
+        }));
+        toast({
+          title: "تم تحديد الموقع بنجاح",
+        });
+        setIsFetchingLocation(false);
+      },
+      (error) => {
+        toast({
+          variant: "destructive",
+          title: "خطأ في تحديد الموقع",
+          description: "لم نتمكن من الحصول على موقعك. يرجى التأكد من منح الإذن اللازم.",
+        });
+        setIsFetchingLocation(false);
+      }
+    );
+  };
+
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -136,10 +172,18 @@ export default function SettingsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>إعدادات QR Code والموقع</CardTitle>
-              <CardDescription>
-                تكوين سلوك رمز الاستجابة السريعة وتحديد الموقع.
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>إعدادات QR Code والموقع</CardTitle>
+                  <CardDescription>
+                    تكوين سلوك رمز الاستجابة السريعة وتحديد الموقع.
+                  </CardDescription>
+                </div>
+                <Button variant="outline" type="button" onClick={handleFetchLocation} disabled={isFetchingLocation}>
+                    {isFetchingLocation ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <LocateFixed className="ml-2 h-4 w-4" />}
+                    تحديد الموقع الحالي
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -285,5 +329,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
