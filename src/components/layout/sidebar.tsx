@@ -63,7 +63,7 @@ export function Sidebar() {
               >
                 <Link href="/attendance">
                   <ScanLine />
-                  <span>الحضور والإنصراف</span>
+                  <span>الحضوضر والإنصراف</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
