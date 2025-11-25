@@ -1,3 +1,5 @@
+'use client';
+
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,8 +9,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { findImage } from "@/lib/placeholder-images";
-import { QrCode, LogIn, LogOut } from "lucide-react";
+import { LogIn, LogOut } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -20,9 +21,34 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { attendanceRecords } from "@/lib/data";
+import { useEffect, useState } from "react";
 
 export default function AttendancePage() {
-  const qrCodeImage = findImage("qr-code");
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [countdown, setCountdown] = useState(60);
+
+  const generateQrCode = () => {
+    const timestamp = Date.now();
+    const secret = "your-secret-key"; // In a real app, this should be more secure
+    const dataToEncode = `${timestamp}-${secret}`;
+    const newQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(dataToEncode)}`;
+    setQrCodeUrl(newQrCodeUrl);
+    setCountdown(60);
+  };
+
+  useEffect(() => {
+    generateQrCode();
+    const interval = setInterval(generateQrCode, 60000); // Generate new QR code every 60 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [qrCodeUrl]);
+
 
   return (
     <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -36,19 +62,20 @@ export default function AttendancePage() {
           </CardHeader>
           <CardContent className="flex flex-col items-center text-center">
             <div className="mb-4 rounded-lg border bg-card p-4 shadow-inner">
-              {qrCodeImage && (
+              {qrCodeUrl ? (
                 <Image
-                  src={qrCodeImage.imageUrl}
-                  alt={qrCodeImage.description}
-                  data-ai-hint={qrCodeImage.imageHint}
+                  src={qrCodeUrl}
+                  alt="Dynamic QR Code"
                   width={150}
                   height={150}
                   className="rounded-md"
                 />
+              ) : (
+                <div className="h-[150px] w-[150px] bg-muted animate-pulse rounded-md" />
               )}
             </div>
             <p className="mb-4 text-sm text-muted-foreground">
-              صالح لمدة 5 دقائق
+              صالح لمدة {countdown} ثانية
             </p>
             <div className="grid w-full grid-cols-2 gap-4">
               <Button>

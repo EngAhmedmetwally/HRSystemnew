@@ -6,6 +6,7 @@ import {
   Settings,
   Users,
   Building,
+  QrCode,
 } from "lucide-react";
 import {
   Sidebar as AppSidebar,
@@ -63,6 +64,17 @@ export function Sidebar() {
                 <Link href="/attendance">
                   <ScanLine />
                   <span>الحضور والإنصراف</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                tooltip={{ children: "مسح QR", side: "left" }}
+              >
+                <Link href="/scan">
+                  <QrCode />
+                  <span>مسح QR</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
