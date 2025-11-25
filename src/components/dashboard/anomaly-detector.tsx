@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState, useFormStatus } from 'react';
+import { useActionState as useReactActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { runAttendanceAnomalyDetection } from '@/app/actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,6 @@ import {
 } from '@/components/ui/select';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useActionState as useReactActionState } from 'react';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import type { Employee } from '@/lib/types';
