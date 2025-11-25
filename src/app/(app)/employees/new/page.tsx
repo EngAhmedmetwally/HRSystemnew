@@ -32,7 +32,7 @@ import { Switch } from '@/components/ui/switch';
 const screens = [
   { id: 'dashboard', label: 'لوحة التحكم' },
   { id: 'employees', label: 'الموظفين' },
-  { id: 'attendance', label: 'الحضور والإنصراف' },
+  { id: 'attendance', label: 'الحاضرين' },
   { id: 'scan', label: 'مسح QR' },
   { id: 'payroll', label: 'الرواتب' },
   { id: 'settings', label: 'الإعدادات' },
@@ -209,7 +209,7 @@ export default function NewEmployeePage() {
                 control={form.control}
                 name="deviceVerificationEnabled"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 md:col-span-2">
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">
                         تفعيل التحقق من الجهاز
@@ -371,4 +371,5 @@ export default function NewEmployeePage() {
     </>
   );
 }
+
     

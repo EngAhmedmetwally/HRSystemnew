@@ -11,7 +11,6 @@ import {
 import { useEffect, useState } from "react";
 import { useFirebase } from "@/firebase/provider";
 import { addDoc, collection, serverTimestamp, Timestamp } from "firebase/firestore";
-import { setDocumentNonBlocking } from "@/firebase";
 
 // This would come from settings in a real app
 const QR_VALIDITY_SECONDS = 5;
@@ -42,7 +41,7 @@ export default function QrCodePage() {
 
         const dataToEncode = `${docRef.id}|${secret}`;
         
-        const newQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(dataToEncode)}`;
+        const newQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(dataToEncode)}`;
         
         setQrCodeUrl(newQrCodeUrl);
         setCountdown(QR_VALIDITY_SECONDS);
@@ -72,8 +71,8 @@ export default function QrCodePage() {
 
 
   return (
-    <div className="flex justify-center items-center h-full">
-        <Card className="max-w-sm w-full">
+    <div className="flex justify-center items-center h-full p-4">
+        <Card className="max-w-md w-full">
           <CardHeader className="text-center">
             <CardTitle>إنشاء QR Code للحضور</CardTitle>
             <CardDescription>
@@ -86,12 +85,12 @@ export default function QrCodePage() {
                 <Image
                   src={qrCodeUrl}
                   alt="Dynamic QR Code"
-                  width={200}
-                  height={200}
-                  className="rounded-md"
+                  width={256}
+                  height={256}
+                  className="rounded-md w-full max-w-[256px] h-auto"
                 />
               ) : (
-                <div className="h-[200px] w-[200px] bg-muted animate-pulse rounded-md" />
+                <div className="h-[256px] w-[256px] bg-muted animate-pulse rounded-md" />
               )}
             </div>
             <p className="mb-4 text-sm text-muted-foreground">
@@ -102,3 +101,5 @@ export default function QrCodePage() {
       </div>
   );
 }
+
+    

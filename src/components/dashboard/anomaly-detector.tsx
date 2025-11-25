@@ -65,7 +65,7 @@ export function AnomalyDetector() {
   }, []);
 
   return (
-    <Card className="shadow-sm">
+    <Card className="shadow-sm h-full">
       <CardHeader>
         <CardTitle>كاشف الحالات الشاذة في الحضور</CardTitle>
         <CardDescription>
@@ -132,3 +132,5 @@ export function AnomalyDetector() {
     </Card>
   );
 }
+
+    

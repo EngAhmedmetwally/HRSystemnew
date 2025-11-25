@@ -204,7 +204,7 @@ export default function ScanPage() {
   }, [isScanning, firestore]);
 
   return (
-    <Card className="max-w-md mx-auto">
+    <Card className="max-w-md mx-auto w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Camera />
@@ -219,7 +219,7 @@ export default function ScanPage() {
           <video ref={videoRef} className="h-full w-full object-cover" autoPlay muted playsInline />
           {isScanning && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-               <div className="w-64 h-64 border-4 border-dashed border-primary rounded-lg animate-pulse"></div>
+               <div className="w-48 h-48 sm:w-64 sm:h-64 border-4 border-dashed border-primary rounded-lg animate-pulse"></div>
             </div>
           )}
         </div>
@@ -254,3 +254,5 @@ export default function ScanPage() {
     </Card>
   );
 }
+
+    
