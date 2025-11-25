@@ -1,0 +1,202 @@
+rules_version = '2';
+
+/**
+ * @name HR Pulse Firestore Security Rules
+ * @author Firebase App Builder
+ *
+ * @description
+ * This ruleset enforces a Role-Based Access Control (RBAC) model combined with
+ * a strict user-ownership model for an HR management application. The security
+ * is designed to be robust and flexible for rapid prototyping, focusing on
+ * authorization without enforcing strict data schemas.
+ *
+ * @philosophy
+ * Core Philosophy: The security model defines three primary roles:
+ * 1. Admin: Super-user with full read/write access to all data, including role management.
+ * 2. HR: Can manage employee records, attendance, and payroll. Cannot manage system policies or roles.
+ * 3. Employee: Can only read their own personal data (profile, attendance, payroll).
+ *
+ * Roles are determined by the existence of a user's UID in the /roles_admin or /roles_hr collections.
+ * All access requires user authentication.
+ *
+ * @structure
+ * Data Structure: Data is organized into top-level collections.
+ * - /employees/{employeeId}: Core employee profiles.
+ * - /workDays & /payrolls: Employee-specific data, logically partitioned by date and keyed by employeeId in the path for direct ownership checks.
+ * - /deductionPolicies: System-wide configuration, readable by all, writable only by Admins.
+ * - /roles_admin & /roles_hr: Collections that define user roles. Document existence grants the role.
+ *
+ * @decisions
+ * Key Security Decisions:
+ * - Role-Based Access: Uses `exists()` checks against role collections (/roles_admin, /roles_hr) for performant and clear permissioning.
+ * - Strict Ownership: An employee's access to their own data is enforced using the `employeeId` in the document path, assuming it matches their authentication UID.
+ * - Segregated Listing: To prevent data leaks, `list` operations on collections containing mixed private data (like attendance or payroll) are restricted to Admin/HR roles. Employees can only `get` their specific documents by their known ID.
+ * - Immutable Ownership Links: Once an employee-specific record (like a payroll or workday) is created, its link to the employee (the `employeeId` field) cannot be changed.
+ * - Default Deny: All operations are denied by default unless explicitly allowed. Unauthenticated access is completely blocked.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------------------
+    // Helper Functions
+    // -------------------------------------------------------------------------
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user has an Admin role.
+     * An Admin is defined by the existence of their UID in the /roles_admin collection.
+     */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    /**
+     * Checks if the currently authenticated user has an HR role.
+     * An HR user is defined by the existence of their UID in the /roles_hr collection.
+     */
+    function isHr() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_hr/$(request.auth.uid));
+    }
+
+    /**
+     * Checks if the user is either an HR user or an Admin.
+     */
+    function isHrOrAdmin() {
+      return isAdmin() || isHr();
+    }
+
+
+    /**
+     * Checks if the authenticated user's UID matches the provided userId.
+     * This is the core of the document ownership model.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // -------------------------------------------------------------------------
+    // Collection Rules
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description Manages core employee profiles. Employees can read their own profile.
+     *   HR and Admins can manage all employee profiles.
+     * @path /employees/{employeeId}
+     * @allow (get) An employee with UID 'emp123' reads '/employees/emp123'.
+     * @deny (list) An employee tries to list all documents in the '/employees' collection.
+     * @deny (update) An employee 'emp123' tries to update their own salary in '/employees/emp123'.
+     * @principle Enforces document ownership for reads and role-based access for writes.
+     */
+    match /employees/{employeeId} {
+      allow get: if isOwner(employeeId) || isHrOrAdmin();
+      allow list: if isHrOrAdmin();
+      allow create: if isHrOrAdmin() && request.resource.data.id == employeeId;
+      allow update: if isHrOrAdmin() && resource != null && request.resource.data.id == resource.data.id;
+      allow delete: if isHrOrAdmin() && resource != null;
+    }
+
+    /**
+     * @description Stores daily attendance records. Employees can create their own records (e.g., via QR scan)
+     *   and read their own history. HR and Admins have full control.
+     * @path /workDays/{year}/{month}/{day}/{employeeId}
+     * @allow (get) An employee 'emp123' reads their attendance for a specific day.
+     * @allow (create) An employee 'emp123' creates their own attendance record.
+     * @deny (update) An employee 'emp123' tries to modify a past attendance record.
+     * @deny (list) An employee tries to list all attendance for a given day, which would include other employees.
+     * @principle Restricts access to a user's own data tree and allows self-creation of records.
+     */
+    match /workDays/{year}/{month}/{day}/{employeeId} {
+      allow get: if isOwner(employeeId) || isHrOrAdmin();
+      allow list: if isHrOrAdmin();
+      allow create: if (isOwner(employeeId) && request.resource.data.employeeId == employeeId) || isHrOrAdmin();
+      allow update: if isHrOrAdmin() && resource != null && request.resource.data.employeeId == resource.data.employeeId;
+      allow delete: if isHrOrAdmin() && resource != null;
+    }
+
+    /**
+     * @description Manages global deduction policies for delays, absences, etc.
+     *   These are readable by any signed-in user but only manageable by Admins.
+     * @path /deductionPolicies/{deductionPolicyId}
+     * @allow (get, list) Any authenticated employee or HR user reads the policies.
+     * @deny (create) An HR user tries to create a new company-wide deduction policy.
+     * @principle Provides public read access for configuration data while securing writes to admin-level roles.
+     */
+    match /deductionPolicies/{deductionPolicyId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
+    }
+
+    /**
+     * @description Stores sensitive monthly payroll records. An employee can only read their own record.
+     *   Creation and modification are restricted to HR and Admins.
+     * @path /payrolls/{year}/{month}/{employeeId}
+     * @allow (get) Employee 'emp123' reads their own payroll for a given month.
+     * @deny (update) Employee 'emp123' tries to modify their own payroll document.
+     * @deny (list) Employee 'emp123' tries to list all payrolls for a given month.
+     * @principle Enforces strict ownership for highly sensitive data, with write access limited to privileged roles.
+     */
+    match /payrolls/{year}/{month}/{employeeId} {
+      allow get: if isOwner(employeeId) || isHrOrAdmin();
+      allow list: if isHrOrAdmin();
+      allow create: if isHrOrAdmin() && request.resource.data.employeeId == employeeId;
+      allow update: if isHrOrAdmin() && resource != null && request.resource.data.employeeId == resource.data.employeeId;
+      allow delete: if isHrOrAdmin() && resource != null;
+    }
+
+    /**
+     * @description Manages temporary QR codes for attendance. This is an internal collection
+     *   managed exclusively by HR and Admins for backend processes.
+     * @path /qrCodes/{qrCodeId}
+     * @allow (create) An HR user or Admin generates a new QR code for check-in.
+     * @deny (get, list, create, update, delete) An regular employee tries to perform any operation.
+     * @principle Restricts access to internal, process-specific data to authorized roles only.
+     */
+    match /qrCodes/{qrCodeId} {
+      allow get: if isHrOrAdmin();
+      allow list: if isHrOrAdmin();
+      allow create: if isHrOrAdmin();
+      allow update: if isHrOrAdmin() && resource != null;
+      allow delete: if isHrOrAdmin() && resource != null;
+    }
+
+    /**
+     * @description Defines which users are Admins. Only other Admins can manage this list.
+     * @path /roles_admin/{uid}
+     * @allow (create) An existing Admin adds a new user to the admin roles.
+     * @deny (create) An HR user tries to make themselves an Admin.
+     * @principle Secures role-granting authority to the highest privilege level (self-management).
+     */
+    match /roles_admin/{uid} {
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
+    }
+
+    /**
+     * @description Defines which users are HR personnel. Only Admins can manage this list to
+     *   prevent privilege escalation from within the HR team.
+     * @path /roles_hr/{uid}
+     * @allow (create) An Admin grants HR privileges to a user.
+     * @deny (create) An HR user tries to grant HR privileges to another user.
+     * @principle Enforces separation of duties; role management is an Admin-only function.
+     */
+    match /roles_hr/{uid} {
+      allow get: if isHrOrAdmin();
+      allow list: if isHrOrAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
+    }
+  }
+}
