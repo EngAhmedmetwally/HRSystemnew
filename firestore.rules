@@ -24,8 +24,9 @@ rules_version = '2';
  * Data Structure: Data is organized into top-level collections.
  * - /employees/{employeeId}: Core employee profiles.
  * - /workDays: All employee attendance data, keyed by a unique workDayId. Ownership is checked via the `employeeId` field in the document.
- * - /payrolls: Employee-specific data, logically partitioned by date and keyed by employeeId in the path for direct ownership checks.
+ * - /payrolls: All payroll data, keyed by a unique payrollId. Ownership is checked via the `employeeId` field.
  * - /deductionPolicies: System-wide configuration, readable by all, writable only by Admins.
+ * - /settings: Global system settings, readable by all, writable only by Admins.
  * - /roles_admin & /roles_hr: Collections that define user roles. Document existence grants the role.
  *
  * @decisions
@@ -98,7 +99,7 @@ service cloud.firestore {
     match /employees/{employeeId} {
       allow get: if isOwner(employeeId) || isHrOrAdmin();
       allow list: if isHrOrAdmin();
-      allow create: if isSignedIn() && request.resource.data.id == employeeId;
+      allow create: if isSignedIn(); // Allow any signed-in user to create an employee
       allow update: if isHrOrAdmin() && resource != null && request.resource.data.id == resource.data.id;
       allow delete: if isHrOrAdmin() && resource != null;
     }
@@ -137,20 +138,33 @@ service cloud.firestore {
       allow update: if isAdmin() && resource != null;
       allow delete: if isAdmin() && resource != null;
     }
+    
+    /**
+     * @description Global system settings. Readable by any authenticated user, writable only by Admins.
+     * @path /settings/{settingId}
+     * @allow (get, list) Any authenticated user can read settings.
+     * @deny (create) An HR user tries to create new settings.
+     * @principle Centralized configuration management with restricted write access.
+     */
+    match /settings/{settingId} {
+        allow get, list: if isSignedIn();
+        allow create, update, delete: if isAdmin();
+    }
+
 
     /**
      * @description Stores sensitive monthly payroll records. An employee can only read their own record.
      *   Creation and modification are restricted to HR and Admins.
-     * @path /payrolls/{year}/{month}/{employeeId}
+     * @path /payrolls/{payrollId}
      * @allow (get) Employee 'emp123' reads their own payroll for a given month.
      * @deny (update) Employee 'emp123' tries to modify their own payroll document.
      * @deny (list) Employee 'emp123' tries to list all payrolls for a given month.
      * @principle Enforces strict ownership for highly sensitive data, with write access limited to privileged roles.
      */
-    match /payrolls/{year}/{month}/{employeeId} {
-      allow get: if isOwner(employeeId) || isHrOrAdmin();
+    match /payrolls/{payrollId} {
+      allow get: if isHrOrAdmin() || (isSignedIn() && resource.data.employeeId == request.auth.uid);
       allow list: if isHrOrAdmin();
-      allow create: if isHrOrAdmin() && request.resource.data.employeeId == employeeId;
+      allow create: if isHrOrAdmin();
       allow update: if isHrOrAdmin() && resource != null && request.resource.data.employeeId == resource.data.employeeId;
       allow delete: if isHrOrAdmin() && resource != null;
     }

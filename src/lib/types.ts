@@ -27,11 +27,13 @@ export interface AttendanceRecord {
 export interface Payroll {
   id: string;
   employeeId: string;
-  employeeName: string;
-  month: string;
+  employeeName?: string;
+  month: number;
+  year: number;
   baseSalary: number;
   allowances: number;
   deductions: number;
+  overtimePay: number;
   netSalary: number;
   status: 'paid' | 'pending';
 }

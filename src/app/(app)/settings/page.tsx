@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -20,6 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useFirebase, useDoc, setDocumentNonBlocking, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 interface DeductionLevel {
   id: string;
@@ -28,51 +30,91 @@ interface DeductionLevel {
   deductionValue: number;
 }
 
+interface SystemSettings {
+  checkInTime: string;
+  checkOutTime: string;
+  qrRefreshRate: number;
+  gracePeriod: number;
+  locationLat: string;
+  locationLng: string;
+  allowedRadius: number;
+  deductionLevels: DeductionLevel[];
+}
+
+const defaultSettings: SystemSettings = {
+  checkInTime: '09:00',
+  checkOutTime: '17:00',
+  qrRefreshRate: 60,
+  gracePeriod: 15,
+  locationLat: '24.7136',
+  locationLng: '46.6753',
+  allowedRadius: 500,
+  deductionLevels: [
+    { id: '1', minutes: 30, deductionType: 'minutes', deductionValue: 30 },
+    { id: '2', minutes: 60, deductionType: 'hours', deductionValue: 1 },
+  ],
+};
+
+
 export default function SettingsPage() {
   const { toast } = useToast();
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
-  
-  const [settings, setSettings] = useState({
-    checkInTime: '09:00',
-    checkOutTime: '17:00',
-    qrRefreshRate: 60,
-    gracePeriod: 15,
-    locationLat: '24.7136',
-    locationLng: '46.6753',
-    allowedRadius: 500,
-  });
+  const [settings, setSettings] = useState<SystemSettings>(defaultSettings);
+  const [isLoading, setIsLoading] = useState(true);
+  const { firestore } = useFirebase();
 
-  const [deductionLevels, setDeductionLevels] = useState<DeductionLevel[]>([
-      { id: '1', minutes: 30, deductionType: 'minutes', deductionValue: 30 },
-      { id: '2', minutes: 60, deductionType: 'hours', deductionValue: 1 },
-  ]);
+  const settingsDocRef = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return doc(firestore, 'settings', 'general');
+  }, [firestore]);
+
+  const { data: settingsData, isLoading: isLoadingSettings } = useDoc<SystemSettings>(settingsDocRef);
+
+  useEffect(() => {
+    if (settingsData) {
+      setSettings(settingsData);
+    }
+    setIsLoading(isLoadingSettings);
+  }, [settingsData, isLoadingSettings]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setSettings((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    setSettings((prev) => ({ ...prev, [name]: type === 'number' ? Number(value) : value }));
   };
 
   const handleLevelChange = (id: string, field: keyof Omit<DeductionLevel, 'id' | 'deductionType'>, value: string | number) => {
-    setDeductionLevels(levels => levels.map(level => 
-      level.id === id ? { ...level, [field]: Number(value) } : level
-    ));
+    setSettings(prev => ({
+        ...prev,
+        deductionLevels: prev.deductionLevels.map(level =>
+            level.id === id ? { ...level, [field]: Number(value) } : level
+        )
+    }));
   };
 
   const handleLevelTypeChange = (id: string, value: 'minutes' | 'hours' | 'amount') => {
-      setDeductionLevels(levels => levels.map(level =>
-          level.id === id ? { ...level, deductionType: value } : level
-      ));
+      setSettings(prev => ({
+          ...prev,
+          deductionLevels: prev.deductionLevels.map(level =>
+              level.id === id ? { ...level, deductionType: value } : level
+          )
+      }));
   };
 
   const addLevel = () => {
-    setDeductionLevels(levels => [
-      ...levels,
-      { id: Date.now().toString(), minutes: 0, deductionType: 'minutes', deductionValue: 0 }
-    ]);
+    setSettings(prev => ({
+        ...prev,
+        deductionLevels: [
+            ...prev.deductionLevels,
+            { id: Date.now().toString(), minutes: 0, deductionType: 'minutes', deductionValue: 0 }
+        ]
+    }));
   };
 
   const removeLevel = (id: string) => {
-    setDeductionLevels(levels => levels.filter(level => level.id !== id));
+    setSettings(prev => ({
+        ...prev,
+        deductionLevels: prev.deductionLevels.filter(level => level.id !== id)
+    }));
   };
 
   const handleFetchLocation = () => {
@@ -112,8 +154,8 @@ export default function SettingsPage() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // In a real app, you would save these settings to a database.
-    console.log({ settings, deductionLevels });
+    if (!settingsDocRef) return;
+    setDocumentNonBlocking(settingsDocRef, settings, { merge: true });
     toast({
       title: 'تم حفظ الإعدادات',
       description: 'تم تحديث إعدادات النظام بنجاح.',
@@ -126,6 +168,14 @@ export default function SettingsPage() {
       case 'hours': return 'ساعة';
       case 'amount': return 'جنيه';
     }
+  }
+
+  if (isLoading) {
+    return (
+        <div className="flex justify-center items-center h-full">
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        </div>
+    );
   }
 
   return (
@@ -254,7 +304,7 @@ export default function SettingsPage() {
                       name="gracePeriod"
                       type="number"
                       value={settings.gracePeriod}
-                      onChange={(e) => setSettings(prev => ({...prev, gracePeriod: parseInt(e.target.value, 10)}))}
+                      onChange={handleInputChange}
                       min="0"
                     />
                      <p className="text-xs text-muted-foreground">
@@ -264,7 +314,7 @@ export default function SettingsPage() {
                 
                 <div className="space-y-4">
                     <Label>مستويات الخصم</Label>
-                    {deductionLevels.map((level) => (
+                    {settings.deductionLevels.map((level) => (
                         <div key={level.id} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 p-4 border rounded-md items-end">
                             <div className="space-y-2">
                                 <Label htmlFor={`minutes-${level.id}`} className="text-xs">بعد (كم دقيقة تأخير)</Label>
