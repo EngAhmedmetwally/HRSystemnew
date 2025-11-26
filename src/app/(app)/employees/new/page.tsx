@@ -27,7 +27,7 @@ import { Save, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Switch } from '@/components/ui/switch';
 import { useRouter } from 'next/navigation';
-import { useFirebase, setDocumentNonBlocking } from '@/firebase';
+import { useFirebase, setDocumentNonBlocking, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import {
@@ -82,27 +82,30 @@ export default function NewEmployeePage() {
     }
 
     try {
-      // 1. Generate a dummy email and use the provided password
-      const email = `${data.employeeId}@hr-pulse.system`; // A unique, internal-only email
+      const email = `${data.employeeId}@hr-pulse.system`;
       const { password, role, ...employeeData } = data;
 
-      // 2. Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // 3. Prepare employee data for Firestore
       const employeeDoc = {
         ...employeeData,
-        id: user.uid, // Use the UID from Auth as the document ID
-        email: email, // Store the email for future logins
-        department: '', // Set department to empty string as it's removed
+        id: user.uid,
+        email: email,
+        department: '',
       };
 
-      // 4. Save employee data to Firestore
       const employeeDocRef = doc(firestore, 'employees', user.uid);
-      await setDoc(employeeDocRef, employeeDoc);
+      setDoc(employeeDocRef, employeeDoc)
+        .catch(error => {
+          const contextualError = new FirestorePermissionError({
+            path: employeeDocRef.path,
+            operation: 'create',
+            requestResourceData: employeeDoc
+          });
+          errorEmitter.emit('permission-error', contextualError);
+        });
 
-      // 5. Set user role if not 'employee'
       if (role === 'hr') {
         const hrRoleRef = doc(firestore, 'roles_hr', user.uid);
         await setDoc(hrRoleRef, { uid: user.uid });
@@ -111,23 +114,22 @@ export default function NewEmployeePage() {
         await setDoc(adminRoleRef, { uid: user.uid });
       }
 
-
       toast({
         title: 'تمت إضافة الموظف بنجاح',
         description: `تم إنشاء حساب للموظف ${data.name}.`,
       });
-      router.push('/employees'); // Redirect to employees list on success
+      router.push('/employees');
     } catch (error: any) {
-      console.error("Error creating employee:", error);
       let description = "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.";
       if (error.code === 'auth/email-already-in-use') {
         description = "رقم الموظف هذا مستخدم بالفعل.";
+      } else if (error.name !== 'FirebaseError') { // Don't show generic toast for our custom handled errors
+         toast({
+            variant: 'destructive',
+            title: 'فشل إنشاء الموظف',
+            description: description,
+          });
       }
-      toast({
-        variant: 'destructive',
-        title: 'فشل إنشاء الموظف',
-        description: description,
-      });
     }
   }
 
@@ -375,5 +377,3 @@ export default function NewEmployeePage() {
     </>
   );
 }
-
-    
