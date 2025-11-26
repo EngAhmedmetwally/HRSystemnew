@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 /**
@@ -97,7 +98,7 @@ service cloud.firestore {
     match /employees/{employeeId} {
       allow get: if isOwner(employeeId) || isHrOrAdmin();
       allow list: if isHrOrAdmin();
-      allow create: if isHrOrAdmin() && request.resource.data.id == employeeId;
+      allow create: if isSignedIn() && request.resource.data.id == employeeId;
       allow update: if isHrOrAdmin() && resource != null && request.resource.data.id == resource.data.id;
       allow delete: if isHrOrAdmin() && resource != null;
     }
